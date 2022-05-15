@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,7 @@ func ListRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, recipes)
 }
 
-func UpdateRecipe(c *gin.Context) {
+func UpdateRecipeHandler(c *gin.Context) {
 	id := c.Params.ByName("id")
 	var incomingRecipe Recipe
 	if err := c.ShouldBindJSON(&incomingRecipe); err != nil {
@@ -70,7 +71,7 @@ func UpdateRecipe(c *gin.Context) {
 	c.JSON(http.StatusCreated, recipes[idx])
 }
 
-func DeleteRecipe(c *gin.Context) {
+func DeleteRecipeHandler(c *gin.Context) {
 	id := c.Params.ByName("id")
 	idx := -1
 
@@ -92,6 +93,27 @@ func DeleteRecipe(c *gin.Context) {
 		"message": "Recipe has been deleted"})
 }
 
+func SearchRecipesHandler(c *gin.Context) {
+	tag := c.Query("tag")
+	newRecipes := make([]Recipe, 0)
+
+	for _, recipe := range recipes {
+		found := false
+		for _, recipeTag := range recipe.Tags {
+			if strings.EqualFold(tag, recipeTag) {
+				found = true
+				continue
+			}
+		}
+
+		if found {
+			newRecipes = append(newRecipes, recipe)
+		}
+	}
+
+	c.JSON(http.StatusOK, newRecipes)
+}
+
 func init() {
 	recipes = make([]Recipe, 0)
 }
@@ -100,7 +122,8 @@ func main() {
 	router := gin.Default()
 	router.GET("/recipes", ListRecipesHandler)
 	router.POST("/recipes", NewRecipeHandler)
-	router.PUT("/recipes/:id", UpdateRecipe)
-	router.DELETE("/recipes/:id", DeleteRecipe)
+	router.PUT("/recipes/:id", UpdateRecipeHandler)
+	router.DELETE("/recipes/:id", DeleteRecipeHandler)
+	router.GET("/recipes/search", SearchRecipesHandler)
 	router.Run()
 }
