@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -42,7 +41,6 @@ func ListRecipesHandler(c *gin.Context) {
 
 func UpdateRecipe(c *gin.Context) {
 	id := c.Params.ByName("id")
-	log.Println(id)
 	var incomingRecipe Recipe
 	if err := c.ShouldBindJSON(&incomingRecipe); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -72,6 +70,28 @@ func UpdateRecipe(c *gin.Context) {
 	c.JSON(http.StatusCreated, recipes[idx])
 }
 
+func DeleteRecipe(c *gin.Context) {
+	id := c.Params.ByName("id")
+	idx := -1
+
+	for i, recipe := range recipes {
+		if recipe.ID == id {
+			idx = i
+		}
+	}
+
+	if idx == -1 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Recipe not found"})
+		return
+	}
+
+	recipes = append(recipes[:idx], recipes[idx+1:]...)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Recipe has been deleted"})
+}
+
 func init() {
 	recipes = make([]Recipe, 0)
 }
@@ -81,5 +101,6 @@ func main() {
 	router.GET("/recipes", ListRecipesHandler)
 	router.POST("/recipes", NewRecipeHandler)
 	router.PUT("/recipes/:id", UpdateRecipe)
+	router.DELETE("/recipes/:id", DeleteRecipe)
 	router.Run()
 }
