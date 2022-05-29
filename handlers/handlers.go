@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/noctispine/recipe-api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -15,13 +18,15 @@ import (
 type RecipesHandler struct {
 	collectionRecipes *mongo.Collection
 	ctx               context.Context
+	redisClient       *redis.Client
 }
 
 func NewRecipesHandler(ctx context.Context, collection *mongo.
-	Collection) *RecipesHandler {
+	Collection, redisClient *redis.Client) *RecipesHandler {
 	return &RecipesHandler{
 		collectionRecipes: collection,
 		ctx:               ctx,
+		redisClient:       redisClient,
 	}
 }
 
@@ -54,6 +59,7 @@ func (handler *RecipesHandler) NewRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	handler.redisClient.Del(c, "recipes")
 	c.JSON(http.StatusCreated, recipe)
 
 }
@@ -67,22 +73,39 @@ func (handler *RecipesHandler) NewRecipeHandler(c *gin.Context) {
 // '200':
 //         description: Successful operation
 func (handler *RecipesHandler) ListRecipesHandler(c *gin.Context) {
-	cur, err := handler.collectionRecipes.Find(handler.ctx, bson.M{})
-	if err != nil {
+	val, err := handler.redisClient.Get(c, "recipes").Result()
+	if err == redis.Nil {
+		log.Printf("Request to MongoDB")
+		cur, err := handler.collectionRecipes.Find(handler.ctx, bson.M{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error()})
+		}
+		defer cur.Close(handler.ctx)
+
+		recipes := make([]models.Recipe, 0)
+
+		for cur.Next(handler.ctx) {
+			var recipe models.Recipe
+			cur.Decode(&recipe)
+			recipes = append(recipes, recipe)
+		}
+
+		data, _ := json.Marshal(recipes)
+		handler.redisClient.Set(c, "recipes", string(data), 0)
+
+		c.JSON(http.StatusOK, recipes)
+	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error()})
-	}
-	defer cur.Close(handler.ctx)
+	} else {
+		log.Printf("Request to Redis")
+		recipes := make([]models.Recipe, 0)
+		json.Unmarshal([]byte(val), &recipes)
+		c.JSON(http.StatusOK, recipes)
 
-	recipes := make([]models.Recipe, 0)
-
-	for cur.Next(handler.ctx) {
-		var recipe models.Recipe
-		cur.Decode(&recipe)
-		recipes = append(recipes, recipe)
 	}
 
-	c.JSON(http.StatusOK, recipes)
 }
 
 // swagger:operation PUT /recipes/{id} recipes updateRecipe
@@ -142,7 +165,7 @@ func (handler *RecipesHandler) UpdateRecipeHandler(c *gin.Context) {
 
 		return
 	}
-
+	handler.redisClient.Del(c, "recipes")
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Recipe has been updated"})
 }

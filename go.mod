@@ -4,11 +4,14 @@ go 1.18
 
 require (
 	github.com/gin-gonic/gin v1.7.7
-	github.com/rs/xid v1.4.0
+	github.com/go-redis/redis/v8 v8.11.5
+	github.com/joho/godotenv v1.4.0
 	go.mongodb.org/mongo-driver v1.9.1
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
@@ -16,7 +19,6 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
@@ -32,6 +34,6 @@ require (
 	golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
-	golang.org/x/text v0.3.5 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
+	golang.org/x/text v0.3.6 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
