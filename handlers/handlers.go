@@ -207,6 +207,7 @@ func (handler *RecipesHandler) DeleteRecipeHandler(c *gin.Context) {
 		return
 	}
 
+	handler.redisClient.Del(c, "recipes")
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Recipe has been deleted"})
 }
