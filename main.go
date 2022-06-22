@@ -22,6 +22,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-contrib/sessions"
+	redi "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
@@ -35,7 +37,9 @@ var ctx context.Context
 var err error
 var client *mongo.Client
 var collectionRecipes *mongo.Collection
+var collectionUsers *mongo.Collection
 var recipesHandler *handlers.RecipesHandler
+var authHandler *handlers.AuthHandler
 
 func init() {
 
@@ -56,10 +60,11 @@ func init() {
 	}
 	log.Println("Connected to MongoDB")
 
-	collectionRecipes = client.Database(os.Getenv("COLL_RECIPES")).Collection("recipes")
+	collectionRecipes = client.Database(os.Getenv("MONGO_DB")).Collection("recipes")
+	collectionUsers = client.Database(os.Getenv("MONGO_DB")).Collection("users")
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_RECIPES_ADDR"),
+		Addr:     os.Getenv("REDIS_URI"),
 		Password: "",
 		DB:       0,
 	})
@@ -68,6 +73,8 @@ func init() {
 	fmt.Println("redis status ", status)
 
 	recipesHandler = handlers.NewRecipesHandler(ctx, collectionRecipes, redisClient)
+
+	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
 }
 
 func main() {
@@ -78,10 +85,23 @@ func main() {
 	}()
 
 	router := gin.Default()
+	store, _ := redi.NewStore(10, "tcp", os.Getenv("REDIS_URI"), os.Getenv("REDIS_PASSWORD"), []byte(os.Getenv("REDIS_SECRET")))
+	router.Use(sessions.Sessions("recipes_api", store))
+	router.Use(handlers.CustomLogger())
+	router.POST("/signin", authHandler.SignInHandler)
 	router.GET("/recipes", recipesHandler.ListRecipesHandler)
-	router.POST("/recipes", recipesHandler.NewRecipeHandler)
-	router.PUT("/recipes/:id", recipesHandler.UpdateRecipeHandler)
-	router.DELETE("/recipes/:id", recipesHandler.DeleteRecipeHandler)
+	router.POST("/refresh", authHandler.RefreshHandler)
+	router.POST("/register", authHandler.RegisterHandler)
+
+	authorized := router.Group("/")
+	authorized.Use(authHandler.AuthMiddleware())
+	{
+		authorized.POST("/recipes", recipesHandler.NewRecipeHandler)
+		authorized.PUT("/recipes/:id", recipesHandler.UpdateRecipeHandler)
+		authorized.DELETE("/recipes/:id", recipesHandler.DeleteRecipeHandler)
+		authorized.GET("/signout", authHandler.SignOutHandler)
+	}
 	// router.GET("/recipes/search", SearchRecipesHandler)
 	router.Run()
+
 }

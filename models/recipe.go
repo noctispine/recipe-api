@@ -16,3 +16,10 @@ type Recipe struct {
 	Instructions []string           `json:"instructions" bson:"instructions"`
 	PublishedAt  time.Time          `json:"publishedAt" bson:"publishedAt"`
 }
+
+type User struct {
+	ID        primitive.ObjectID `json:"id" bson:"_id"`
+	Username  string             `json:"username"`
+	Password  string             `json:"password"`
+	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
+}
